@@ -1,0 +1,139 @@
+NAME
+    "IO::Termios" - supply termios(3) methods to "IO::Handle" objects
+
+SYNOPSIS
+     use IO::Termios;
+
+     my $term = IO::Termios->open( "/dev/ttyS0" )
+        or die "Cannot open ttyS0 - $!";
+
+     $term->setbaud( 9600 );
+     $term->setcsize( 8 );
+     $term->setparity( 'n' );
+     $term->setstop( 1 );
+
+     $term->print( "Hello world\n" ); # Still an IO::Handle
+
+     while( <$term> ) {
+        print "A line from ttyS0: $_";
+     }
+
+DESCRIPTION
+    This class extends the generic "IO::Handle" object class by providing
+    methods which access the system's terminal control termios(3)
+    operations.
+
+CONSTRUCTORS
+  $term = IO::Termios->new()
+    Construct a new "IO::Termios" object around the terminal for the
+    program. This is found by checking if any of "STDIN", "STDOUT" or
+    "STDERR" are a terminal. The first one that's found is used. An error
+    occurs if no terminal can be found by this method.
+
+  $term = IO::Termios->new( $handle )
+    Construct a new "IO::Termios" object around the given filehandle.
+
+  $term = IO::Termios->open( $path )
+    Open the given path, and return a new "IO::Termios" object around the
+    filehandle. If the "open" call fails, "undef" is returned.
+
+METHODS
+  $attrs = $term->getattr
+    Makes a "tcgetattr()" call on the underlying filehandle, and returns a
+    "IO::Termios::Attrs" object.
+
+    If the "tcgetattr()" call fails, "undef" is returned.
+
+  $term->setattr( $attrs )
+    Makes a "tcsetattr()" call on the underlying file handle, setting
+    attributes from the given "IO::Termios::Attrs" object.
+
+    If the "tcsetattr()" call fails, "undef" is returned. Otherwise, a true
+    value is returned.
+
+FLAG-ACCESSOR METHODS
+    Theses methods are implemented in terms of the lower level methods, but
+    provide an interface which is more abstract, and easier to re-implement
+    on other non-POSIX systems. These should be used in preference to the
+    lower ones.
+
+    For efficiency, when getting or setting a large number of flags, it may
+    be more efficient to call "getattr", then operate on the returned
+    object, before possibly passing it to "setattr". The returned
+    "IO::Termios::Attrs" object supports the same methods as documented
+    here.
+
+    The following two sections of code are therefore equivalent, though the
+    latter is more efficient as it only calls "setattr" once.
+
+     $term->setbaud( 38400 );
+     $term->setcsize( 8 );
+     $term->setparity( 'n' );
+     $term->setstop( 1 );
+
+
+
+     my $attrs = $term->getattr;
+     $attrs->setbaud( 38400 );
+     $attrs->setcsize( 8 );
+     $attrs->setparity( 'n' );
+     $attrs->setstop( 1 );
+     $term->setattr( $attrs );
+
+  $baud = $term->getibaud
+  $baud = $term->getobaud
+  $term->setibaud( $baud )
+  $term->setobaud( $baud )
+  $term->setbaud( $baud )
+    Convenience accessors for the "ispeed" and "ospeed". $baud is an integer
+    directly giving the line rate, instead of one of the "B*nnn*" constants.
+
+  $bits = $term->getcsize
+  $term->setcsize( $bits )
+    Convenience accessor for the "CSIZE" bits of "c_cflag". $bits is an
+    integer 5 to 8.
+
+  $parity = $term->getparity
+  $term->setparity( $parity )
+    Convenience accessor for the "PARENB" and "PARODD" bits of "c_cflag".
+    $parity is "n", "o" or "e".
+
+  $stop = $term->getstop
+  $term->setstop( $stop )
+    Convenience accessor for the "CSTOPB" bit of "c_cflag". $stop is 1 or 2.
+
+  $mode = $term->getflag_icanon
+  $term->setflag_icanon( $mode )
+    Accessor for the "ICANON" bit of "c_lflag". This is called "canonical"
+    mode and controls whether the terminal's line-editing feature will be
+    used to return a whole line (if false), or if individual bytes from
+    keystrokes will be returned as they are available (if true).
+
+  $mode = $term->getflag_echo
+  $term->setflag_echo( $mode )
+    Accessor for the "ECHO" bit of "c_lflag". This controls whether input
+    characters are echoed back to the terminal.
+
+TODO
+    *   Adding more getflag_*/setflag_* convenience wrappers
+
+    *   Automatically upgrading STDIN/STDOUT/STDERR if appropriate, given a
+        flag.
+
+         use IO::Termios -upgrade;
+
+         STDIN->setflag_echo( 0 );
+
+    *   Some sort of combined baud/csize/parity/stop getting/setting method
+
+         $term->setline( "38400,8,n,1" );
+
+    *   Modem line control, via "TCIOM{GET,SET,BIS,BIC}". Annoyingly it
+        doesn't appear this is available without XS code.
+
+SEE ALSO
+    *   IO::Tty - Import Tty control constants
+
+AUTHOR
+    Paul Evans <leonerd@leonerd.org.uk>
+
