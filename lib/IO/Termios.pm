@@ -11,7 +11,7 @@ use base qw( IO::Handle );
 
 use Carp;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Exporter 'import';
 
@@ -231,6 +231,28 @@ foreach my $name (qw( ibaud obaud csize parity stop )) {
    $self->setattr( $attrs ) or croak "Cannot setattr - $!";
 };
 
+=head2 $mode = $term->getflag_cread
+
+=head2 $term->setflag_cread( $mode )
+
+Accessor for the C<CREAD> bit of the C<c_cflag>. This enables the receiver.
+
+=head2 $mode = $term->getflag_hupcl
+
+=head2 $term->setflag_hupcl( $mode )
+
+Accessor for the C<HUPCL> bit of the C<c_cflag>. This lowers the modem control
+lines after the last process closes the device.
+
+=head2 $mode = $term->getflag_clocal
+
+=head2 $term->setflag_clocal( $mode )
+
+Accessor for the C<CLOCAL> bit of the C<c_cflag>. This controls whether local
+mode is enabled; which if set, ignores modem control lines.
+
+=cut
+
 =head2 $mode = $term->getflag_icanon
 
 =head2 $term->setflag_icanon( $mode )
@@ -252,6 +274,11 @@ characters are echoed back to the terminal.
 =cut
 
 my @flags = (
+   # cflag
+   [ cread  => qw( CREAD  c ) ],
+   [ clocal => qw( CLOCAL c ) ],
+   [ hupcl  => qw( HUPCL  c ) ],
+   # lflag
    [ icanon => qw( ICANON l ) ],
    [ echo   => qw( ECHO   l ) ],
 );

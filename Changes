@@ -1,4 +1,7 @@
 Revision history for IO-Termios
 
+0.02    CHANGES:
+         * Added accessors for CREAD, CLOCAL and HUPCL c_cflags flags.
+
 0.01    First version, released on an unsuspecting world.
 

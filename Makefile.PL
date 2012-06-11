@@ -2,16 +2,16 @@
 use ExtUtils::MakeMaker;
 WriteMakefile
 (
-          'NAME' => 'IO::Termios',
-          'VERSION_FROM' => 'lib/IO/Termios.pm',
-          'PREREQ_PM' => {
-                           'IO::Pty' => 0,
-                           'IO::Tty' => 0,
-                           'Test::LongString' => 0,
-                           'Test::More' => 0
-                         },
-          'INSTALLDIRS' => 'site',
-          'EXE_FILES' => [],
-          'PL_FILES' => {}
-        )
+  'NAME' => 'IO::Termios',
+  'VERSION_FROM' => 'lib/IO/Termios.pm',
+  'PREREQ_PM' => {
+                   'IO::Pty' => 0,
+                   'IO::Tty' => 0,
+                   'Test::LongString' => 0,
+                   'Test::More' => 0
+                 },
+  'INSTALLDIRS' => 'site',
+  'EXE_FILES' => [],
+  'PL_FILES' => {}
+)
 ;

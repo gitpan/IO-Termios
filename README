@@ -1,5 +1,5 @@
 NAME
-    "IO::Termios" - supply termios(3) methods to "IO::Handle" objects
+    `IO::Termios' - supply termios(3) methods to `IO::Handle' objects
 
 SYNOPSIS
      use IO::Termios;
@@ -19,36 +19,36 @@ SYNOPSIS
      }
 
 DESCRIPTION
-    This class extends the generic "IO::Handle" object class by providing
-    methods which access the system's terminal control termios(3)
+    This class extends the generic `IO::Handle' object class by providing
+    methods which access the system's terminal control `termios(3)'
     operations.
 
 CONSTRUCTORS
   $term = IO::Termios->new()
-    Construct a new "IO::Termios" object around the terminal for the
-    program. This is found by checking if any of "STDIN", "STDOUT" or
-    "STDERR" are a terminal. The first one that's found is used. An error
+    Construct a new `IO::Termios' object around the terminal for the
+    program. This is found by checking if any of `STDIN', `STDOUT' or
+    `STDERR' are a terminal. The first one that's found is used. An error
     occurs if no terminal can be found by this method.
 
   $term = IO::Termios->new( $handle )
-    Construct a new "IO::Termios" object around the given filehandle.
+    Construct a new `IO::Termios' object around the given filehandle.
 
   $term = IO::Termios->open( $path )
-    Open the given path, and return a new "IO::Termios" object around the
-    filehandle. If the "open" call fails, "undef" is returned.
+    Open the given path, and return a new `IO::Termios' object around the
+    filehandle. If the `open' call fails, `undef' is returned.
 
 METHODS
   $attrs = $term->getattr
-    Makes a "tcgetattr()" call on the underlying filehandle, and returns a
-    "IO::Termios::Attrs" object.
+    Makes a `tcgetattr()' call on the underlying filehandle, and returns a
+    `IO::Termios::Attrs' object.
 
-    If the "tcgetattr()" call fails, "undef" is returned.
+    If the `tcgetattr()' call fails, `undef' is returned.
 
   $term->setattr( $attrs )
-    Makes a "tcsetattr()" call on the underlying file handle, setting
-    attributes from the given "IO::Termios::Attrs" object.
+    Makes a `tcsetattr()' call on the underlying file handle, setting
+    attributes from the given `IO::Termios::Attrs' object.
 
-    If the "tcsetattr()" call fails, "undef" is returned. Otherwise, a true
+    If the `tcsetattr()' call fails, `undef' is returned. Otherwise, a true
     value is returned.
 
 FLAG-ACCESSOR METHODS
@@ -58,13 +58,13 @@ FLAG-ACCESSOR METHODS
     lower ones.
 
     For efficiency, when getting or setting a large number of flags, it may
-    be more efficient to call "getattr", then operate on the returned
-    object, before possibly passing it to "setattr". The returned
-    "IO::Termios::Attrs" object supports the same methods as documented
+    be more efficient to call `getattr', then operate on the returned
+    object, before possibly passing it to `setattr'. The returned
+    `IO::Termios::Attrs' object supports the same methods as documented
     here.
 
     The following two sections of code are therefore equivalent, though the
-    latter is more efficient as it only calls "setattr" once.
+    latter is more efficient as it only calls `setattr' once.
 
      $term->setbaud( 38400 );
      $term->setcsize( 8 );
@@ -85,33 +85,50 @@ FLAG-ACCESSOR METHODS
   $term->setibaud( $baud )
   $term->setobaud( $baud )
   $term->setbaud( $baud )
-    Convenience accessors for the "ispeed" and "ospeed". $baud is an integer
-    directly giving the line rate, instead of one of the "B*nnn*" constants.
+    Convenience accessors for the `ispeed' and `ospeed'. `$baud' is an
+    integer directly giving the line rate, instead of one of the `B*nnn*'
+    constants.
 
   $bits = $term->getcsize
   $term->setcsize( $bits )
-    Convenience accessor for the "CSIZE" bits of "c_cflag". $bits is an
+    Convenience accessor for the `CSIZE' bits of `c_cflag'. `$bits' is an
     integer 5 to 8.
 
   $parity = $term->getparity
   $term->setparity( $parity )
-    Convenience accessor for the "PARENB" and "PARODD" bits of "c_cflag".
-    $parity is "n", "o" or "e".
+    Convenience accessor for the `PARENB' and `PARODD' bits of `c_cflag'.
+    `$parity' is `n', `o' or `e'.
 
   $stop = $term->getstop
   $term->setstop( $stop )
-    Convenience accessor for the "CSTOPB" bit of "c_cflag". $stop is 1 or 2.
+    Convenience accessor for the `CSTOPB' bit of `c_cflag'. `$stop' is 1 or
+    2.
+
+  $mode = $term->getflag_cread
+  $term->setflag_cread( $mode )
+    Accessor for the `CREAD' bit of the `c_cflag'. This enables the
+    receiver.
+
+  $mode = $term->getflag_hupcl
+  $term->setflag_hupcl( $mode )
+    Accessor for the `HUPCL' bit of the `c_cflag'. This lowers the modem
+    control lines after the last process closes the device.
+
+  $mode = $term->getflag_clocal
+  $term->setflag_clocal( $mode )
+    Accessor for the `CLOCAL' bit of the `c_cflag'. This controls whether
+    local mode is enabled; which if set, ignores modem control lines.
 
   $mode = $term->getflag_icanon
   $term->setflag_icanon( $mode )
-    Accessor for the "ICANON" bit of "c_lflag". This is called "canonical"
+    Accessor for the `ICANON' bit of `c_lflag'. This is called "canonical"
     mode and controls whether the terminal's line-editing feature will be
     used to return a whole line (if false), or if individual bytes from
     keystrokes will be returned as they are available (if true).
 
   $mode = $term->getflag_echo
   $term->setflag_echo( $mode )
-    Accessor for the "ECHO" bit of "c_lflag". This controls whether input
+    Accessor for the `ECHO' bit of `c_lflag'. This controls whether input
     characters are echoed back to the terminal.
 
 TODO
@@ -128,7 +145,7 @@ TODO
 
          $term->setline( "38400,8,n,1" );
 
-    *   Modem line control, via "TCIOM{GET,SET,BIS,BIC}". Annoyingly it
+    *   Modem line control, via `TCIOM{GET,SET,BIS,BIC}'. Annoyingly it
         doesn't appear this is available without XS code.
 
 SEE ALSO

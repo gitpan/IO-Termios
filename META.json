@@ -4,7 +4,7 @@
       "Paul Evans <leonerd@leonerd.org.uk>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.110930",
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120630",
    "license" : [
       "perl_5"
    ],
@@ -16,22 +16,22 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "IO::Pty" : 0,
-            "IO::Tty" : 0,
-            "Test::LongString" : 0,
-            "Test::More" : 0
+            "IO::Pty" : "0",
+            "IO::Tty" : "0",
+            "Test::LongString" : "0",
+            "Test::More" : "0"
          }
       },
       "runtime" : {
          "requires" : {
-            "IO::Tty" : 0
+            "IO::Tty" : "0"
          }
       }
    },
    "provides" : {
       "IO::Termios" : {
          "file" : "lib/IO/Termios.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       }
    },
    "release_status" : "stable",
@@ -40,5 +40,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.01"
+   "version" : "0.02"
 }
