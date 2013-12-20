@@ -4,13 +4,8 @@ NAME
 SYNOPSIS
      use IO::Termios;
 
-     my $term = IO::Termios->open( "/dev/ttyS0" )
+     my $term = IO::Termios->open( "/dev/ttyS0", "9600,8,n,1" )
         or die "Cannot open ttyS0 - $!";
-
-     $term->setbaud( 9600 );
-     $term->setcsize( 8 );
-     $term->setparity( 'n' );
-     $term->setstop( 1 );
 
      $term->print( "Hello world\n" ); # Still an IO::Handle
 
@@ -33,9 +28,12 @@ CONSTRUCTORS
   $term = IO::Termios->new( $handle )
     Construct a new `IO::Termios' object around the given filehandle.
 
-  $term = IO::Termios->open( $path )
+  $term = IO::Termios->open( $path, $modestr )
     Open the given path, and return a new `IO::Termios' object around the
     filehandle. If the `open' call fails, `undef' is returned.
+
+    If `$modestr' is provided, the constructor will pass it to the
+    `set_mode' method before returning.
 
 METHODS
   $attrs = $term->getattr
@@ -79,6 +77,12 @@ FLAG-ACCESSOR METHODS
      $attrs->setparity( 'n' );
      $attrs->setstop( 1 );
      $term->setattr( $attrs );
+
+    However, a convenient shortcut method is provided for the common case of
+    setting the baud rate, character size, parity and stop size all at the
+    same time. This is `set_mode':
+
+     $term->set_mode( "38400,8,n,1" );
 
   $baud = $term->getibaud
   $baud = $term->getobaud
@@ -131,6 +135,17 @@ FLAG-ACCESSOR METHODS
     Accessor for the `ECHO' bit of `c_lflag'. This controls whether input
     characters are echoed back to the terminal.
 
+  $term->set_mode( $modestr )
+  $modestr = $term->get_mode
+    Accessor for the derived "mode string", which is a comma-joined
+    concatenation of the baud rate, character size, parity mode, and stop
+    size in a format such as
+
+     19200,8,n,1
+
+    When setting the mode string, trailing components may be omitted meaning
+    their value will not be affected.
+
 TODO
     *   Adding more getflag_*/setflag_* convenience wrappers
 
@@ -140,10 +155,6 @@ TODO
          use IO::Termios -upgrade;
 
          STDIN->setflag_echo( 0 );
-
-    *   Some sort of combined baud/csize/parity/stop getting/setting method
-
-         $term->setline( "38400,8,n,1" );
 
     *   Modem line control, via `TCIOM{GET,SET,BIS,BIC}'. Annoyingly it
         doesn't appear this is available without XS code.

@@ -11,7 +11,7 @@ use base qw( IO::Handle );
 
 use Carp;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Exporter 'import';
 
@@ -25,13 +25,8 @@ C<IO::Termios> - supply F<termios(3)> methods to C<IO::Handle> objects
 
  use IO::Termios;
 
- my $term = IO::Termios->open( "/dev/ttyS0" )
+ my $term = IO::Termios->open( "/dev/ttyS0", "9600,8,n,1" )
     or die "Cannot open ttyS0 - $!";
-
- $term->setbaud( 9600 );
- $term->setcsize( 8 );
- $term->setparity( 'n' );
- $term->setstop( 1 );
 
  $term->print( "Hello world\n" ); # Still an IO::Handle
 
@@ -84,20 +79,27 @@ sub new
    return $self;
 }
 
-=head2 $term = IO::Termios->open( $path )
+=head2 $term = IO::Termios->open( $path, $modestr )
 
 Open the given path, and return a new C<IO::Termios> object around the
 filehandle. If the C<open> call fails, C<undef> is returned.
+
+If C<$modestr> is provided, the constructor will pass it to the C<set_mode>
+method before returning.
 
 =cut
 
 sub open
 {
    my $class = shift;
-   my ( $path ) = @_;
+   my ( $path, $modestr ) = @_;
 
    open my $tty, "+<", $path or return undef;
-   return $class->new( $tty );
+   my $self = $class->new( $tty ) or return undef;
+
+   $self->set_mode( $modestr ) if defined $modestr;
+
+   return $self;
 }
 
 =head1 METHODS
@@ -168,6 +170,12 @@ Z<>
  $attrs->setparity( 'n' );
  $attrs->setstop( 1 );
  $term->setattr( $attrs );
+
+However, a convenient shortcut method is provided for the common case of
+setting the baud rate, character size, parity and stop size all at the same
+time. This is C<set_mode>:
+
+ $term->set_mode( "38400,8,n,1" );
 
 =cut
 
@@ -301,6 +309,50 @@ foreach ( @flags ) {
       $attrs->$setmethod( $set );
       $self->setattr( $attrs ) or croak "Cannot setattr - $!";
    };
+}
+
+=head2 $term->set_mode( $modestr )
+
+=head2 $modestr = $term->get_mode
+
+Accessor for the derived "mode string", which is a comma-joined concatenation
+of the baud rate, character size, parity mode, and stop size in a format such
+as
+
+ 19200,8,n,1
+
+When setting the mode string, trailing components may be omitted meaning their
+value will not be affected.
+
+=cut
+
+sub set_mode
+{
+   my $self = shift;
+   my ( $modestr ) = @_;
+
+   my ( $baud, $csize, $parity, $stop ) = split m/,/, $modestr;
+
+   my $attrs = $self->getattr;
+
+   $attrs->setbaud  ( $baud   ) if defined $baud;
+   $attrs->setcsize ( $csize  ) if defined $csize;
+   $attrs->setparity( $parity ) if defined $parity;
+   $attrs->setstop  ( $stop   ) if defined $stop;
+
+   $self->setattr( $attrs );
+}
+
+sub get_mode
+{
+   my $self = shift;
+
+   my $attrs = $self->getattr;
+   return join ",",
+      $attrs->getibaud,
+      $attrs->getcsize,
+      $attrs->getparity,
+      $attrs->getstop;
 }
 
 package # hide from CPAN
@@ -448,12 +500,6 @@ Automatically upgrading STDIN/STDOUT/STDERR if appropriate, given a flag.
  use IO::Termios -upgrade;
 
  STDIN->setflag_echo( 0 );
-
-=item *
-
-Some sort of combined baud/csize/parity/stop getting/setting method
- 
- $term->setline( "38400,8,n,1" );
 
 =item *
 
