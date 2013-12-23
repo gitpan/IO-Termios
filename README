@@ -16,7 +16,24 @@ SYNOPSIS
 DESCRIPTION
     This class extends the generic `IO::Handle' object class by providing
     methods which access the system's terminal control `termios(3)'
-    operations.
+    operations. These methods are primarily of interest when dealing with
+    TTY devices, including serial ports.
+
+    The flag-setting methods will apply to any TTY device, such as a
+    pseudo-tty, and are useful for controlling such flags as the `ECHO'
+    flag, to disable local echo.
+
+     my $stdin = IO::Termios->new( \*STDIN );
+     $stdin->setflag_echo( 0 );
+
+    When dealing with a serial port the line mode method is useful for
+    setting the basic serial parameters such as baud rate, and the modem
+    line control methods can be used to access the hardware handshaking
+    lines.
+
+     my $ttyS0 = IO::Termios->open( "/dev/ttyS0" );
+     $ttyS0->set_mode( "19200,8,n,1" );
+     $ttyS0->set_modem({ dsr => 1, cts => 1 });
 
 CONSTRUCTORS
   $term = IO::Termios->new()
@@ -48,6 +65,46 @@ METHODS
 
     If the `tcsetattr()' call fails, `undef' is returned. Otherwise, a true
     value is returned.
+
+  $term->set_mode( $modestr )
+  $modestr = $term->get_mode
+    Accessor for the derived "mode string", which is a comma-joined
+    concatenation of the baud rate, character size, parity mode, and stop
+    size in a format such as
+
+     19200,8,n,1
+
+    When setting the mode string, trailing components may be omitted meaning
+    their value will not be affected.
+
+  $bits = $term->tiocmget
+  $term->tiocmset( $bits )
+    Accessor for the modem line control bits. Takes or returns a bitmask of
+    values.
+
+  $term->tiombic( $bits )
+  $term->tiombis( $bits )
+    Bitwise mutator methods for the modem line control bits. `tiombic' will
+    clear just the bits provided and leave the others unchanged; `tiombis'
+    will set them.
+
+  $flags = $term->get_modem
+    Returns a hash reference containing named flags corresponding to the
+    modem line control bits. Any bit that is set will yield a key in the
+    returned hash of the same name. The bit names are
+
+     dtr dsr rts cts cd ri
+
+  $term->set_modem( $flags )
+    Changes the modem line control bit flags as given by the hash reference.
+    Each bit to be changed should be represented by a key in the `$flags'
+    hash of the names given above. False values will be cleared, true values
+    will be set. Other flags will not be altered.
+
+  $set = $term->getmodem_BIT
+  $term->setmodem_BIT( $set )
+    Accessor methods for each of the modem line control bits. A set of
+    methods exists for each of the named modem control bits given above.
 
 FLAG-ACCESSOR METHODS
     Theses methods are implemented in terms of the lower level methods, but
@@ -135,17 +192,6 @@ FLAG-ACCESSOR METHODS
     Accessor for the `ECHO' bit of `c_lflag'. This controls whether input
     characters are echoed back to the terminal.
 
-  $term->set_mode( $modestr )
-  $modestr = $term->get_mode
-    Accessor for the derived "mode string", which is a comma-joined
-    concatenation of the baud rate, character size, parity mode, and stop
-    size in a format such as
-
-     19200,8,n,1
-
-    When setting the mode string, trailing components may be omitted meaning
-    their value will not be affected.
-
 TODO
     *   Adding more getflag_*/setflag_* convenience wrappers
 
@@ -155,9 +201,6 @@ TODO
          use IO::Termios -upgrade;
 
          STDIN->setflag_echo( 0 );
-
-    *   Modem line control, via `TCIOM{GET,SET,BIS,BIC}'. Annoyingly it
-        doesn't appear this is available without XS code.
 
 SEE ALSO
     *   IO::Tty - Import Tty control constants

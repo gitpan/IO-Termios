@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2013 -- leonerd@leonerd.org.uk
 
 package IO::Termios;
 
@@ -11,11 +11,16 @@ use base qw( IO::Handle );
 
 use Carp;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Exporter 'import';
 
 use POSIX qw( TCSANOW );
+use IO::Tty;
+use IO::Tty::Constant qw(
+   TIOCMGET TIOCMSET TIOCMBIC TIOCMBIS
+   TIOCM_DTR TIOCM_DSR TIOCM_RTS TIOCM_CTS TIOCM_CD TIOCM_RI
+);
 
 =head1 NAME
 
@@ -37,7 +42,24 @@ C<IO::Termios> - supply F<termios(3)> methods to C<IO::Handle> objects
 =head1 DESCRIPTION
 
 This class extends the generic C<IO::Handle> object class by providing methods
-which access the system's terminal control C<termios(3)> operations.
+which access the system's terminal control C<termios(3)> operations. These
+methods are primarily of interest when dealing with TTY devices, including
+serial ports.
+
+The flag-setting methods will apply to any TTY device, such as a pseudo-tty,
+and are useful for controlling such flags as the C<ECHO> flag, to disable
+local echo.
+
+ my $stdin = IO::Termios->new( \*STDIN );
+ $stdin->setflag_echo( 0 );
+
+When dealing with a serial port the line mode method is useful for setting the
+basic serial parameters such as baud rate, and the modem line control methods
+can be used to access the hardware handshaking lines.
+
+ my $ttyS0 = IO::Termios->open( "/dev/ttyS0" );
+ $ttyS0->set_mode( "19200,8,n,1" );
+ $ttyS0->set_modem({ dsr => 1, cts => 1 });
 
 =cut
 
@@ -142,6 +164,185 @@ sub setattr
 
    return $attrs->setattr( $self->fileno, TCSANOW );
 }
+
+=head2 $term->set_mode( $modestr )
+
+=head2 $modestr = $term->get_mode
+
+Accessor for the derived "mode string", which is a comma-joined concatenation
+of the baud rate, character size, parity mode, and stop size in a format such
+as
+
+ 19200,8,n,1
+
+When setting the mode string, trailing components may be omitted meaning their
+value will not be affected.
+
+=cut
+
+sub set_mode
+{
+   my $self = shift;
+   my ( $modestr ) = @_;
+
+   my ( $baud, $csize, $parity, $stop ) = split m/,/, $modestr;
+
+   my $attrs = $self->getattr;
+
+   $attrs->setbaud  ( $baud   ) if defined $baud;
+   $attrs->setcsize ( $csize  ) if defined $csize;
+   $attrs->setparity( $parity ) if defined $parity;
+   $attrs->setstop  ( $stop   ) if defined $stop;
+
+   $self->setattr( $attrs );
+}
+
+sub get_mode
+{
+   my $self = shift;
+
+   my $attrs = $self->getattr;
+   return join ",",
+      $attrs->getibaud,
+      $attrs->getcsize,
+      $attrs->getparity,
+      $attrs->getstop;
+}
+
+=head2 $bits = $term->tiocmget
+
+=head2 $term->tiocmset( $bits )
+
+Accessor for the modem line control bits. Takes or returns a bitmask of
+values.
+
+=cut
+
+sub tiocmget
+{
+   my $self = shift;
+
+   my $bitstr = pack "i!", 0;
+   ioctl( $self, TIOCMGET, $bitstr ) or
+      croak "Cannot ioctl(TIOCMGET) - $!";
+
+   return unpack "i!", $bitstr;
+}
+
+sub tiocmset
+{
+   my $self = shift;
+   my ( $bits ) = @_;
+
+   my $bitstr = pack "i!", $bits;
+   ioctl( $self, TIOCMSET, $bitstr )
+      or croak "Cannot ioctl(TIOCMSET) - $!";
+}
+
+=head2 $term->tiombic( $bits )
+
+=head2 $term->tiombis( $bits )
+
+Bitwise mutator methods for the modem line control bits. C<tiombic> will clear
+just the bits provided and leave the others unchanged; C<tiombis> will set
+them.
+
+=cut
+
+sub tiocmbic
+{
+   my $self = shift;
+   my ( $bits ) = @_;
+
+   my $bitstr = pack "i!", $bits;
+   ioctl( $self, TIOCMBIC, $bitstr )
+      or croak "Cannot ioctl(TIOCMBIC) - $!";
+}
+
+sub tiocmbis
+{
+   my $self = shift;
+   my ( $bits ) = @_;
+
+   my $bitstr = pack "i!", $bits;
+   ioctl( $self, TIOCMBIS, $bitstr )
+      or croak "Cannot ioctl(TIOCMBIS) - $!";
+}
+
+my %_bit2modem;
+my %_modem2bit;
+foreach (qw( dtr dsr rts cts cd ri )) {
+   my $bit = IO::Tty::Constant->${\"TIOCM_\U$_"};
+   $_bit2modem{$bit} = $_;
+   $_modem2bit{$_}   = $bit;
+
+   my $getmodem = sub {
+      my $self = shift;
+      return !!($self->tiocmget & $bit);
+   };
+   my $setmodem = sub {
+      my $self = shift;
+      my ( $set ) = @_;
+      $set ? $self->tiocmbis( $bit )
+           : $self->tiocmbic( $bit );
+   };
+
+   no strict 'refs';
+   *{"getmodem_$_"} = $getmodem;
+   *{"setmodem_$_"} = $setmodem;
+}
+
+=head2 $flags = $term->get_modem
+
+Returns a hash reference containing named flags corresponding to the modem
+line control bits. Any bit that is set will yield a key in the returned hash
+of the same name. The bit names are
+
+ dtr dsr rts cts cd ri
+
+=cut
+
+sub get_modem
+{
+   my $self = shift;
+   my $bits = $self->tiocmget;
+
+   return +{
+      map { $bits & $_modem2bit{$_} ? ( $_ => 1 ) : () } keys %_modem2bit
+   };
+}
+
+=head2 $term->set_modem( $flags )
+
+Changes the modem line control bit flags as given by the hash reference. Each
+bit to be changed should be represented by a key in the C<$flags> hash of the
+names given above. False values will be cleared, true values will be set.
+Other flags will not be altered.
+
+=cut
+
+sub set_modem
+{
+   my $self = shift;
+   my ( $flags ) = @_;
+
+   my $bits = $self->tiocmget;
+   foreach ( keys %$flags ) {
+      my $bit = $_modem2bit{$_} or croak "Unrecognised modem line control bit $_";
+
+      $flags->{$_} ? ( $bits |=  $bit )
+                   : ( $bits &= ~$bit );
+   }
+
+   $self->tiocmset( $bits );
+}
+
+=head2 $set = $term->getmodem_BIT
+
+=head2 $term->setmodem_BIT( $set )
+
+Accessor methods for each of the modem line control bits. A set of methods
+exists for each of the named modem control bits given above.
 
 =head1 FLAG-ACCESSOR METHODS
 
@@ -311,50 +512,6 @@ foreach ( @flags ) {
    };
 }
 
-=head2 $term->set_mode( $modestr )
-
-=head2 $modestr = $term->get_mode
-
-Accessor for the derived "mode string", which is a comma-joined concatenation
-of the baud rate, character size, parity mode, and stop size in a format such
-as
-
- 19200,8,n,1
-
-When setting the mode string, trailing components may be omitted meaning their
-value will not be affected.
-
-=cut
-
-sub set_mode
-{
-   my $self = shift;
-   my ( $modestr ) = @_;
-
-   my ( $baud, $csize, $parity, $stop ) = split m/,/, $modestr;
-
-   my $attrs = $self->getattr;
-
-   $attrs->setbaud  ( $baud   ) if defined $baud;
-   $attrs->setcsize ( $csize  ) if defined $csize;
-   $attrs->setparity( $parity ) if defined $parity;
-   $attrs->setstop  ( $stop   ) if defined $stop;
-
-   $self->setattr( $attrs );
-}
-
-sub get_mode
-{
-   my $self = shift;
-
-   my $attrs = $self->getattr;
-   return join ",",
-      $attrs->getibaud,
-      $attrs->getcsize,
-      $attrs->getparity,
-      $attrs->getstop;
-}
-
 package # hide from CPAN
    IO::Termios::Attrs;
 
@@ -500,11 +657,6 @@ Automatically upgrading STDIN/STDOUT/STDERR if appropriate, given a flag.
  use IO::Termios -upgrade;
 
  STDIN->setflag_echo( 0 );
-
-=item *
-
-Modem line control, via C<TCIOM{GET,SET,BIS,BIC}>. Annoyingly it doesn't
-appear this is available without XS code.
 
 =back
 
